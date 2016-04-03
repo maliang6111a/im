@@ -8,10 +8,8 @@ import (
 )
 
 var (
-	VERSION     int = 1 //普通IM消息协议
-	AUTHVERSION int = 2 //认证消息协议
 
-	MSG_TYPE int = 1
+	//MSG_TYPE int = 1
 
 	message_creators map[int]MessageCreator = make(map[int]MessageCreator)
 )
@@ -19,6 +17,7 @@ var (
 func init() {
 	//消息协议
 	message_creators[VERSION] = func() IMessage { return new(IMMessage) }
+	//认证协议信息
 	message_creators[AUTHVERSION] = func() IMessage { return new(AuthMessage) }
 }
 
