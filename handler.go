@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	//	"encoding/base64"
 	"log"
 )
 
@@ -13,7 +12,10 @@ func HandlerMessage(client *Client, msg *Message) {
 
 	if !client.IsAuthed() {
 		if key, ok := handlerAuthMessage(msg); ok {
-			client.handlerAuth(key)
+			key, result := client.handlerAuth(key)
+			if result {
+				client.handlerAuth(key)
+			}
 		} else {
 			client.Stop()
 		}
@@ -27,10 +29,20 @@ func HandlerMessage(client *Client, msg *Message) {
 //认证成功，返回认证用户ID，是否成功标志
 func handlerAuthMessage(msg *Message) (string, bool) {
 	//des, _ := base64.StdEncoding.DecodeString(imsg.content)
-	if msg.msg_type == BITAUTH {
-
-	} else if msg.msg_type == JSONAUTH {
-
+	var autMsg AuthMessage
+	var authId = "123"
+	var authPwd = "ok"
+	if body, ok := msg.body.(*AuthMessage); ok {
+		autMsg = body
 	}
-	return "", false
+
+	//TODO json 转换
+	if autMsg != nil {
+		if msg.msg_type == BITAUTH {
+
+		} else if msg.msg_type == JSONAUTH {
+
+		}
+	}
+	return "", true
 }
