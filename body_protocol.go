@@ -7,11 +7,11 @@ import (
 )
 
 type IMMessage struct {
-	sender    int64  //8
-	receiver  int64  //8
-	timestamp int32  //4
-	msgid     int32  //4
-	content   string //...
+	Sender    int64  `json:"sender"`    //8
+	Receiver  int64  `json:"receiver"`  //8
+	Timestamp int32  `json:"timestamp"` //4
+	Msgid     int32  `json:"msgid"`     //4
+	Content   string `json:"content"`   //...
 }
 
 //认证信息
@@ -47,11 +47,11 @@ func (this *AuthMessage) FromData(buff []byte) bool {
 
 func (this *IMMessage) ToData() []byte {
 	buffer := new(bytes.Buffer)
-	binary.Write(buffer, binary.BigEndian, this.sender)
-	binary.Write(buffer, binary.BigEndian, this.receiver)
-	binary.Write(buffer, binary.BigEndian, this.timestamp)
-	binary.Write(buffer, binary.BigEndian, this.msgid)
-	buffer.Write([]byte(this.content))
+	binary.Write(buffer, binary.BigEndian, this.Sender)
+	binary.Write(buffer, binary.BigEndian, this.Receiver)
+	binary.Write(buffer, binary.BigEndian, this.Timestamp)
+	binary.Write(buffer, binary.BigEndian, this.Msgid)
+	buffer.Write([]byte(this.Content))
 	return buffer.Bytes()
 }
 
@@ -60,10 +60,10 @@ func (this *IMMessage) FromData(buff []byte) bool {
 		return false
 	}
 	buffer := bytes.NewBuffer(buff)
-	binary.Read(buffer, binary.BigEndian, &this.sender)
-	binary.Read(buffer, binary.BigEndian, &this.receiver)
-	binary.Read(buffer, binary.BigEndian, &this.timestamp)
-	binary.Read(buffer, binary.BigEndian, &this.msgid)
-	this.content = string(buff[24:])
+	binary.Read(buffer, binary.BigEndian, &this.Sender)
+	binary.Read(buffer, binary.BigEndian, &this.Receiver)
+	binary.Read(buffer, binary.BigEndian, &this.Timestamp)
+	binary.Read(buffer, binary.BigEndian, &this.Msgid)
+	this.Content = string(buff[24:])
 	return true
 }

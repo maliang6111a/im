@@ -98,21 +98,14 @@ func SendEngineIOBinaryMessage(conn engineio.Conn, msg *Message) error {
 	return nil
 }
 
-func SendEngineIOTextMessage(conn engineio.Conn, msg *Message) error {
+func SendEngineIOTextMessage(conn engineio.Conn, msg string) error {
 	w, err := conn.NextWriter(engineio.MessageText)
 	defer w.Close()
 	if err != nil {
 		log.Println("get next writer fail")
 		return err
 	}
-
-	//TODO
-	//将MSG转换为字符串
-	var sendMsg = "你们好么"
-	//base64.
-	bs := base64.StdEncoding.EncodeToString([]byte(sendMsg))
-	//bb2, _ := base64.StdEncoding.DecodeString(bs)
-	//fmt.Println(string(bb2))
+	bs := base64.StdEncoding.EncodeToString([]byte(msg))
 	_, err = w.Write([]byte(bs))
 	if err != nil {
 		return err
@@ -120,6 +113,27 @@ func SendEngineIOTextMessage(conn engineio.Conn, msg *Message) error {
 	return nil
 }
 
+func ReadEngineIOMessageResultStr(conn engineio.Conn) string {
+	t, r, err := conn.NextReader()
+	if err != nil {
+		return ""
+	}
+	b, err := ioutil.ReadAll(r)
+	if err != nil {
+		return ""
+	}
+	r.Close()
+	if t == engineio.MessageText {
+		bs, err := base64.StdEncoding.DecodeString(string(b))
+		if err != nil {
+			return ""
+		}
+		return string(bs)
+	}
+	return ""
+}
+
+//目前没用
 func ReadEngineIOMessage(conn engineio.Conn) *Message {
 	t, r, err := conn.NextReader()
 	if err != nil {
@@ -133,8 +147,6 @@ func ReadEngineIOMessage(conn engineio.Conn) *Message {
 	if t == engineio.MessageText {
 		iMsg := &IMMessage{0, 0, 0, 0, string(b)}
 		msg := &Message{1, 1, iMsg}
-		//ack
-		SendEngineIOTextMessage(conn, msg)
 		return msg
 	} else {
 		log.Println("发信消息")

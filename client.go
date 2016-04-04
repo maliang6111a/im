@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"net"
 
 	"github.com/googollee/go-engine.io"
@@ -29,11 +30,13 @@ func (this *Client) Run() {
 func (this *Client) Stop() {
 	this.isAuth = false
 	this.isClose = true
+	defer RemoveClient(this)
 	if conn, ok := this.conn.(net.Conn); ok {
 		conn.Close()
 	} else if conn, ok := this.conn.(engineio.Conn); ok {
 		conn.Close()
 	}
+
 }
 
 //处理认证
@@ -46,12 +49,38 @@ func (this *Client) IsAuthed() bool {
 	return this.isAuth && this.key != ""
 }
 
+func (this *Client) SendBuffMessage(msg *Message) {
+	if conn, ok := this.conn.(net.Conn); ok {
+		SendMessage(conn, msg)
+	}
+}
+
+func (this *Client) SendTextMessageOf(msg *Message) {
+	if conn, ok := this.conn.(engineio.Conn); ok {
+		immessage := msg.body.(*IMMessage)
+		bs, err := json.Marshal(immessage)
+		if err != nil {
+			return
+		}
+		//内部编码
+		//this.SendTextMessage(string(bs))
+		SendEngineIOTextMessage(conn, string(bs))
+	}
+}
+
+func (this *Client) SendTextMessage(msg string) {
+	if conn, ok := this.conn.(engineio.Conn); ok {
+		SendEngineIOTextMessage(conn, msg)
+	}
+}
+
 // engin.io 连接
 func (this *Client) handReadSIOConn(conn engineio.Conn) {
 	for !this.isClose {
-		msg := ReadEngineIOMessage(conn)
-		if msg != nil {
-			HandlerMessage(this, msg)
+		//msg := ReadEngineIOMessage(conn)
+		msg := ReadEngineIOMessageResultStr(conn)
+		if msg != "" {
+			HandlerTextMessage(this, msg)
 		} else {
 			this.Stop()
 		}
