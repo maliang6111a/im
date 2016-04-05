@@ -22,6 +22,12 @@ func createTitle() string {
 	return string(bs)
 }
 
+func createAuth() *Message {
+	imsg := &IMMessage{0, 0, 0, 0, "连接未认证..."}
+	msg := &Message{BUFVERSION, imsg}
+	return msg
+}
+
 //文本信息处理
 func HandlerTextMessage(client *Client, msg string) {
 
@@ -74,31 +80,43 @@ func HandlerTextMessage(client *Client, msg string) {
 			client.SendTextMessage(createTitle())
 		}
 
+		//TODO 时间消息ID处理
 		msg := &IMMessage{sender, receiver, 0, 0, content}
-		TextMessageRouter(msg)
+		log.Println(msg)
+		tmp := &Message{BUFVERSION, msg}
+		router(tmp)
 	}
 
 }
-
-func TextMessageRouter(msg *IMMessage) {
-	clients := FindClients(fmt.Sprintf("%d", msg.Receiver))
-
-	if len(clients) > 0 {
-		for _, client := range clients {
-			bs, err := json.Marshal(msg)
-			if err != nil {
-				continue
-			}
-			//内部编码
-			client.SendTextMessage(string(bs))
-		}
+func router(msg *Message) {
+	imsg := msg.body.(*IMMessage)
+	clients := FindClients(fmt.Sprintf("%d", imsg.Receiver))
+	for _, client := range clients {
+		client.SendMessage(msg)
 	}
 }
 
 //buff消息处理
 func HandlerBuffMessage(client *Client, msg *Message) {
-	log.Println(msg)
-	log.Println(msg.body)
-
-	client.SendBuffMessage(msg)
+	//连接没有认证
+	if !client.IsAuthed() {
+		if amsg, ok := msg.body.(*AuthMessage); ok {
+			var flag = false
+			if amsg.authId == TmpauthId && amsg.authPwd == TmpauthPwd {
+				flag = true
+			}
+			if !flag {
+				client.Stop()
+			} else {
+				client.handlerAuth(amsg.authId)
+				PushClient(client)
+			}
+		} else {
+			client.SendBuffMessage(createAuth())
+			//提示不断开
+			//client.Stop()
+		}
+	} else {
+		router(msg)
+	}
 }

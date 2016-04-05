@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -56,16 +55,15 @@ func StartTCPServer(addr string) {
 
 //tcp 信息发送
 func SendMessage(conn io.Writer, msg *Message) error {
+
 	buffer := new(bytes.Buffer)
 	WriterMessage(buffer, msg)
 	buf := buffer.Bytes()
 	n, err := conn.Write(buf)
 	if err != nil {
-		fmt.Printf("sock write error:", err)
 		return err
 	}
 	if n != len(buf) {
-		fmt.Printf("write less:%d %d", n, len(buf))
 		return errors.New("write less")
 	}
 	return nil

@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"net"
 
 	"github.com/googollee/go-engine.io"
@@ -50,6 +49,18 @@ func (this *Client) IsAuthed() bool {
 	return this.isAuth && this.key != ""
 }
 
+func (this *Client) SendMessage(msg *Message) {
+	if !this.isAuth || this.isClose {
+		return
+	}
+
+	if _, ok := this.conn.(net.Conn); ok {
+		this.SendBuffMessage(msg)
+	} else if _, ok := this.conn.(engineio.Conn); ok {
+		this.SendTextMessageOf(msg)
+	}
+}
+
 func (this *Client) SendBuffMessage(msg *Message) {
 	if conn, ok := this.conn.(net.Conn); ok {
 		SendMessage(conn, msg)
@@ -60,6 +71,7 @@ func (this *Client) SendTextMessageOf(msg *Message) {
 	if conn, ok := this.conn.(engineio.Conn); ok {
 		immessage := msg.body.(*IMMessage)
 		bs, err := json.Marshal(immessage)
+		//cbs := base64.StdEncoding.EncodeToString(bs)
 		if err != nil {
 			return
 		}
@@ -91,12 +103,10 @@ func (this *Client) handReadSIOConn(conn engineio.Conn) {
 func (this *Client) handReadTcpConn(conn net.Conn) {
 	for !this.isClose {
 		msg := ReaderMessage(conn)
-		log.Println("接收信息: ", msg)
 		if msg != nil {
 			conn.SetDeadline(RestTimeOut())
 			HandlerBuffMessage(this, msg)
 		} else {
-			log.Println("服务端关闭tcp...")
 			this.Stop()
 		}
 	}
