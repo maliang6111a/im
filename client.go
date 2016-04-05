@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"net"
 
 	"github.com/googollee/go-engine.io"
@@ -63,7 +64,6 @@ func (this *Client) SendTextMessageOf(msg *Message) {
 			return
 		}
 		//内部编码
-		//this.SendTextMessage(string(bs))
 		SendEngineIOTextMessage(conn, string(bs))
 	}
 }
@@ -91,11 +91,12 @@ func (this *Client) handReadSIOConn(conn engineio.Conn) {
 func (this *Client) handReadTcpConn(conn net.Conn) {
 	for !this.isClose {
 		msg := ReaderMessage(conn)
+		log.Println("接收信息: ", msg)
 		if msg != nil {
 			conn.SetDeadline(RestTimeOut())
-
-			HandlerMessage(this, msg)
+			HandlerBuffMessage(this, msg)
 		} else {
+			log.Println("服务端关闭tcp...")
 			this.Stop()
 		}
 	}

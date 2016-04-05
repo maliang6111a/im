@@ -146,7 +146,7 @@ func ReadEngineIOMessage(conn engineio.Conn) *Message {
 	r.Close()
 	if t == engineio.MessageText {
 		iMsg := &IMMessage{0, 0, 0, 0, string(b)}
-		msg := &Message{1, 1, iMsg}
+		msg := &Message{1, iMsg}
 		return msg
 	} else {
 		log.Println("发信消息")

@@ -12,6 +12,7 @@ import (
 
 //连接处理
 func handler(conn net.Conn) {
+	conn.SetDeadline(RestTimeOut())
 	client := NewClient(conn)
 	//保存起来
 	//TODO

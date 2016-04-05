@@ -16,9 +16,9 @@ var (
 
 func init() {
 	//消息协议
-	message_creators[VERSION] = func() IMessage { return new(IMMessage) }
+	message_creators[BUFVERSION] = func() IMessage { return new(IMMessage) }
 	//认证协议信息
-	message_creators[AUTHVERSION] = func() IMessage { return new(AuthMessage) }
+	message_creators[BUFAUTH] = func() IMessage { return new(AuthMessage) }
 }
 
 type MessageCreator func() IMessage
@@ -30,9 +30,8 @@ type IMessage interface {
 
 //消息
 type Message struct {
-	version  int         //1,byte,消息协议版本
-	msg_type int         //1,byte,消息类型
-	body     interface{} //len
+	version int         //1,byte,消息协议版本
+	body    interface{} //len
 }
 
 func (this *Message) ToData() []byte {
@@ -57,25 +56,22 @@ func (this *Message) FromData(buff []byte) bool {
 
 //写入消息头
 //version  1
-//msg_type 1
 //msg_len  4
-func WriterHeader(version byte, msg_type byte, msg_len int32, buffer io.Writer) {
-	buff := []byte{version, msg_type}
+func WriterHeader(version byte, msg_len int32, buffer io.Writer) {
+	buff := []byte{version}
 	buffer.Write(buff)
 	binary.Write(buffer, binary.BigEndian, msg_len)
 }
 
 //读取消息头信息
 // version  1
-// msg_type 1
 // msg_len  4
-func ReaderHeader(buff []byte) (int, int, int) {
+func ReaderHeader(buff []byte) (int, int) {
 	buffer := bytes.NewBuffer(buff)
 	var msg_len int32
 	version, _ := buffer.ReadByte()
-	msg_type, _ := buffer.ReadByte()
 	binary.Read(buffer, binary.BigEndian, &msg_len)
-	return int(version), int(msg_type), int(msg_len)
+	return int(version), int(msg_len)
 }
 
 //写消息
@@ -86,7 +82,7 @@ func WriterMessage(w io.Writer, msg *Message) {
 		return
 	}
 	//消息头
-	WriterHeader(byte(msg.version), byte(msg.msg_type), int32(len(body)), w)
+	WriterHeader(byte(msg.version), int32(len(body)), w)
 	//消息体
 	w.Write(body)
 }
@@ -94,13 +90,13 @@ func WriterMessage(w io.Writer, msg *Message) {
 //消息读取
 func ReaderMessage(conn io.Reader) *Message {
 
-	buff := make([]byte, 6)
+	buff := make([]byte, 5)
 	_, err := io.ReadFull(conn, buff)
 	if err != nil {
 		return nil
 	}
 
-	version, msg_type, msg_len := ReaderHeader(buff)
+	version, msg_len := ReaderHeader(buff)
 	if msg_len <= 0 || msg_len >= 32*1024 {
 		return nil
 	}
@@ -113,10 +109,10 @@ func ReaderMessage(conn io.Reader) *Message {
 
 	message := new(Message)
 	message.version = version
-	message.msg_type = msg_type
 
 	//正文
 	if !message.FromData(buff) {
+		log.Println("body from data error")
 		return nil
 	}
 

@@ -69,7 +69,10 @@ func Wait() {
 
 func main() {
 	log.Println("启动服务....")
+	//参数启动方式
+	//默认启动方式
 
+	//TODO
 	go StartTCPServer(fmt.Sprintf("0.0.0.0:%d", 9997))
 	go StartSocketIO(fmt.Sprintf("0.0.0.0:%d", 9998))
 	ServerGroup.Wait()

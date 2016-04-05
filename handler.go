@@ -58,9 +58,10 @@ func HandlerTextMessage(client *Client, msg string) {
 		}
 
 	} else {
+
+		//消息格式不正确的情况
 		defer func() {
 			if err := recover(); err != nil {
-				log.Println(err)
 				client.SendTextMessage(createTitle())
 			}
 		}()
@@ -95,6 +96,9 @@ func TextMessageRouter(msg *IMMessage) {
 }
 
 //buff消息处理
-func HandlerMessage(client *Client, msg *Message) {
+func HandlerBuffMessage(client *Client, msg *Message) {
+	log.Println(msg)
+	log.Println(msg.body)
 
+	client.SendBuffMessage(msg)
 }
