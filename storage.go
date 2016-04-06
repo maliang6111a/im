@@ -2,14 +2,25 @@ package main
 
 import (
 	"log"
+	"sync"
 )
 
 //"log"
 
 var caches map[string][]*Client
+var lock *sync.Mutex
 
 func init() {
 	caches = make(map[string][]*Client)
+	lock = &sync.Mutex{}
+}
+
+func connections() {
+	var i = 0
+	for _, v := range caches {
+		i += len(v)
+	}
+	log.Println("当前连接: ", i)
 }
 
 func exits(key string) []*Client {
@@ -17,13 +28,21 @@ func exits(key string) []*Client {
 }
 
 func delClient(connId string, clients []*Client) bool {
+	lock.Lock()
+	defer lock.Unlock()
 	if len(clients) <= 0 {
 		return false
 	}
 	var key string
 	for i, tmp := range clients {
 		if tmp.connId == connId {
-			clients = append(clients[:i], clients[i+1:]...)
+
+			if i <= 0 {
+				clients = make([]*Client, 0)
+			} else {
+				clients = append(clients[:i], clients[i+1:]...)
+			}
+
 			key = tmp.key
 		}
 	}
@@ -31,8 +50,7 @@ func delClient(connId string, clients []*Client) bool {
 	if len(clients) <= 0 {
 		delete(caches, key)
 	}
-	log.Println("当前连接: ", len(caches))
-
+	go connections()
 	return true
 }
 
@@ -41,6 +59,8 @@ func FindClients(key string) []*Client {
 }
 
 func PushClient(client *Client) {
+	lock.Lock()
+	defer lock.Unlock()
 	if client == nil || client.key == "" {
 		return
 	}
@@ -48,12 +68,11 @@ func PushClient(client *Client) {
 		clients := exits(client.key)
 		clients = append(clients, client)
 		caches[client.key] = clients
-		log.Println("当前连接 : ", len(caches))
 	}
+	go connections()
 }
 
 func RemoveClient(client *Client) {
-
 	if client == nil {
 		return
 	}

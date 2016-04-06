@@ -124,6 +124,7 @@ func ReadEngineIOMessageResultStr(conn engineio.Conn) string {
 	}
 	r.Close()
 	if t == engineio.MessageText {
+		//log.Println("接收信息1: ", string(b))
 		bs, err := base64.StdEncoding.DecodeString(string(b))
 		if err != nil {
 			return ""

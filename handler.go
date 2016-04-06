@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 
 	gson "github.com/bitly/go-simplejson"
 )
@@ -51,10 +52,11 @@ func HandlerTextMessage(client *Client, msg string) {
 		authMsg.authPwd = authPwd
 
 		//TODO 验证
-		var flag = false
-		if authMsg.authId == TmpauthId && authMsg.authPwd == TmpauthPwd {
-			flag = true
-		}
+		//var flag = false
+		//if authMsg.authId == TmpauthId && authMsg.authPwd == TmpauthPwd {
+		//	flag = true
+		//}
+		var flag = true
 
 		if !flag {
 			client.Stop()
@@ -82,17 +84,24 @@ func HandlerTextMessage(client *Client, msg string) {
 
 		//TODO 时间消息ID处理
 		msg := &IMMessage{sender, receiver, 0, 0, content}
-		log.Println(msg)
 		tmp := &Message{BUFVERSION, msg}
-		router(tmp)
+		router(client, tmp)
 	}
 
 }
-func router(msg *Message) {
+func router(client *Client, msg *Message) {
 	imsg := msg.body.(*IMMessage)
 	clients := FindClients(fmt.Sprintf("%d", imsg.Receiver))
-	for _, client := range clients {
-		client.SendMessage(msg)
+
+	if imsg.Sender <= -1 || imsg.Receiver <= -1 {
+		if conn, ok := client.conn.(net.Conn); ok {
+			log.Println("心跳设置....")
+			conn.SetDeadline(RestTimeOut())
+		}
+	} else {
+		for _, client := range clients {
+			client.SendMessage(msg)
+		}
 	}
 }
 
@@ -101,10 +110,11 @@ func HandlerBuffMessage(client *Client, msg *Message) {
 	//连接没有认证
 	if !client.IsAuthed() {
 		if amsg, ok := msg.body.(*AuthMessage); ok {
-			var flag = false
-			if amsg.authId == TmpauthId && amsg.authPwd == TmpauthPwd {
-				flag = true
-			}
+			//认证
+			var flag = true
+			//if amsg.authId == TmpauthId && amsg.authPwd == TmpauthPwd {
+			//	flag = true
+			//}
 			if !flag {
 				client.Stop()
 			} else {
@@ -117,6 +127,6 @@ func HandlerBuffMessage(client *Client, msg *Message) {
 			//client.Stop()
 		}
 	} else {
-		router(msg)
+		router(client, msg)
 	}
 }
