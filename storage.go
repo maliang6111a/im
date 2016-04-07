@@ -11,6 +11,7 @@ var caches map[string][]*Client
 var lock *sync.Mutex
 
 func init() {
+	log.Println("存储内存分配...")
 	caches = make(map[string][]*Client)
 	lock = &sync.Mutex{}
 }

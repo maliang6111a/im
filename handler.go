@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net"
 
 	gson "github.com/bitly/go-simplejson"
@@ -93,15 +92,26 @@ func router(client *Client, msg *Message) {
 	imsg := msg.body.(*IMMessage)
 	clients := FindClients(fmt.Sprintf("%d", imsg.Receiver))
 
+	//心跳发送 -1
 	if imsg.Sender <= -1 || imsg.Receiver <= -1 {
 		if conn, ok := client.conn.(net.Conn); ok {
-			log.Println("心跳设置....")
+			//log.Println("心跳设置....")
 			conn.SetDeadline(RestTimeOut())
 		}
 	} else {
+
 		for _, client := range clients {
 			client.SendMessage(msg)
 		}
+
+		//发送给其他服务器
+		for k, v := range servers {
+			if k == thisBroker {
+				continue
+			}
+			v.SendMessage(msg)
+		}
+
 	}
 }
 
@@ -112,6 +122,9 @@ func HandlerBuffMessage(client *Client, msg *Message) {
 		if amsg, ok := msg.body.(*AuthMessage); ok {
 			//认证
 			var flag = true
+			if ISServe(amsg.authId) || ISServe(amsg.authPwd) {
+				flag = true
+			}
 			//if amsg.authId == TmpauthId && amsg.authPwd == TmpauthPwd {
 			//	flag = true
 			//}

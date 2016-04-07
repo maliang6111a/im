@@ -21,6 +21,10 @@ func NewClient(conn interface{}) *Client {
 	return client
 }
 
+func NewSerClient(server string, conn interface{}) *Client {
+	return &Client{server, Rand().Hex(), conn, false, true}
+}
+
 //启动该连接
 func (this *Client) Run() {
 	go this.Reader()
@@ -61,10 +65,11 @@ func (this *Client) SendMessage(msg *Message) {
 	}
 }
 
-func (this *Client) SendBuffMessage(msg *Message) {
+func (this *Client) SendBuffMessage(msg *Message) error {
 	if conn, ok := this.conn.(net.Conn); ok {
-		SendMessage(conn, msg)
+		return SendMessage(conn, msg)
 	}
+	return nil
 }
 
 func (this *Client) SendTextMessageOf(msg *Message) {

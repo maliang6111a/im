@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net"
 	"os"
@@ -13,7 +12,8 @@ import (
 
 var (
 	//超时时间
-	TIMEOUT = 40 * time.Second
+	TIMEOUT  = 40 * time.Second
+	HEATBEAT = 5 * time.Second
 
 	ServerGroup = &sync.WaitGroup{}
 )
@@ -73,8 +73,8 @@ func main() {
 	//默认启动方式
 
 	//TODO
-	go StartTCPServer(fmt.Sprintf("0.0.0.0:%d", 9997))
-	go StartSocketIO(fmt.Sprintf("0.0.0.0:%d", 9998))
+	go StartTCPServer(GetTcpAddr())
+	go StartSocketIO(GetSioAddr())
 	ServerGroup.Wait()
 	Wait()
 }
