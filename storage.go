@@ -34,6 +34,13 @@ func delClient(connId string, clients []*Client) bool {
 	if len(clients) <= 0 {
 		return false
 	}
+
+	defer func() {
+		if err := recover(); err != nil {
+			log.Println("storage line 40 : ", err)
+		}
+	}()
+
 	var key string
 	for i, tmp := range clients {
 		if tmp.connId == connId {
@@ -41,6 +48,7 @@ func delClient(connId string, clients []*Client) bool {
 			if i <= 0 {
 				clients = make([]*Client, 0)
 			} else {
+				log.Println(len(clients), i, i+1, clients)
 				clients = append(clients[:i], clients[i+1:]...)
 			}
 
@@ -51,7 +59,7 @@ func delClient(connId string, clients []*Client) bool {
 	if len(clients) <= 0 {
 		delete(caches, key)
 	}
-	go connections()
+	connections()
 	return true
 }
 

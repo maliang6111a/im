@@ -53,6 +53,12 @@ func (this *Client) IsAuthed() bool {
 	return this.isAuth && this.key != ""
 }
 
+func (this *Client) SetTimeOut() {
+	if conn, ok := this.conn.(net.Conn); ok {
+		conn.SetDeadline(RestTimeOut())
+	}
+}
+
 func (this *Client) SendMessage(msg *Message) {
 	if !this.isAuth || this.isClose {
 		return
@@ -109,7 +115,6 @@ func (this *Client) handReadTcpConn(conn net.Conn) {
 	for !this.isClose {
 		msg := ReaderMessage(conn)
 		if msg != nil {
-			conn.SetDeadline(RestTimeOut())
 			HandlerBuffMessage(this, msg)
 		} else {
 			this.Stop()

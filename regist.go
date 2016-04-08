@@ -19,6 +19,8 @@ var brokers []string
 //节点名称
 var nodeName string
 var thisBroker string
+var zkConn *zk.Conn
+var registed = false
 
 func ISServe(authId string) bool {
 	for key, _ := range servers {
@@ -29,105 +31,75 @@ func ISServe(authId string) bool {
 	return false
 }
 
-func watch(conn *zk.Conn, registed bool) {
-
-	thisBroker = GetTcpAddr()
-	bs, stat, event, err := conn.GetW(nodeName)
-	if err != nil {
-		//create(conn, nodeName, []byte(thisBroker))
-		log.Fatalln("主机节点不存在,不能启动服务....", nodeName)
-	} else {
-		brs := string(bs)
-		//TODO
-		//以逗号分隔主机
-		//后期改进必须要要添加锁机制
-		brokers = strings.Split(brs, SPLITCHAT)
-		//检查是否在列表中
-		for _, tmpBroker := range brokers {
-			if tmpBroker == thisBroker {
-				registed = true
-			}
-		}
-
-		//标志是否注册过
-		if !registed {
-			brokers = append(brokers, thisBroker)
-			conn.Set(nodeName, []byte(strings.Join(brokers, SPLITCHAT)), stat.Version)
-			registed = true
-		}
-
-		//处理服务
-		go handlerBrokers(brokers)
-
-		handlerWatch(conn, event)
-	}
-
-}
-
-//创建一个 watch 监听broker 变化情况
 func init() {
 	nodeName = GetNode()
-	var registed = false
-	if conn := getZKConn(); conn != nil {
-		//启动监听会获取到其他机器信息
-		go watch(conn, registed)
-	}
-}
+	thisBroker = GetTcpAddr()
 
-func getZKConn() *zk.Conn {
-	conn, _, err := zk.Connect(GetZks(), time.Second*10)
+	tmp, _, err := zk.Connect(GetZks(), time.Second*10) //连接超时时间
 	if err != nil {
-		return nil
-	}
-	return conn
-}
-
-func CloseConn(conn *zk.Conn) {
-	if conn == nil {
+		log.Fatalln("连接zookeeper错误..", err)
 		return
 	}
-	conn.Close()
+	zkConn = tmp
+	watch(nodeName)
 }
 
-//处理watch
-func handlerWatch(conn *zk.Conn, event <-chan zk.Event) {
+func watch(node string) {
+
+	bs, stat, event, err := zkConn.GetW(node)
+	if err != nil {
+		log.Fatalln("监听节点错误", err)
+		return
+	}
+	brokers = strings.Split(string(bs), SPLITCHAT)
+
+	go handlerBrokers(brokers)
+
+	for _, broker := range brokers {
+		if broker == thisBroker {
+			registed = true
+		}
+	}
+
+	if !registed {
+		brokers = append(brokers, thisBroker)
+		stat, err = zkConn.Set(nodeName, []byte(strings.Join(brokers, SPLITCHAT)), stat.Version)
+		if err != nil {
+			log.Fatalln("注册本机错误", err)
+			return
+		}
+		registed = true
+	}
+
+	go change(event)
+}
+
+func change(event <-chan zk.Event) {
 	select {
 	case name := <-event:
-		if name.Type == zk.EventNodeDataChanged || name.Type == zk.EventNodeDeleted {
-			watch(conn, true)
-		}
-	}
-}
-
-func create(node string, v []byte) (string, error) {
-	conn := getZKConn()
-	defer conn.Close()
-	//节点，值，xxx,权限
-	return conn.Create(node, v, int32(zk.FlagEphemeral), zk.WorldACL(zk.PermAll))
-}
-
-func deleteBroker(node, brokerAddr string) bool {
-	conn := getZKConn()
-	defer conn.Close()
-
-	if conn != nil {
-		bs, stat, err := conn.Get(nodeName)
-		if err != nil {
-			return false
-		}
-		tmps := strings.Split(string(bs), SPLITCHAT)
-
-		for i, tmp := range tmps {
-			if brokerAddr == tmp {
-				tmps = append(tmps[:i], tmps[i+1:]...)
+		{
+			if name.Type == zk.EventNodeDataChanged || name.Type == zk.EventNodeDeleted {
+				watch(nodeName)
 			}
 		}
-		_, err = conn.Set(node, []byte(strings.Join(tmps, SPLITCHAT)), stat.Version)
-		if err != nil {
-			return false
-		}
-		return true
 	}
-	return false
+}
 
+func deleteBroker(server string) {
+	_, stat, err := zkConn.Get(nodeName)
+	if err != nil || len(brokers) <= 0 {
+		log.Println("删除broker错误", err)
+		return
+	}
+	for i, broker := range brokers {
+		if broker == server {
+			if len(brokers) <= 0 {
+				brokers = make([]string, 0)
+			} else {
+				brokers = append(brokers[:i], brokers[i+1:]...)
+			}
+		}
+	}
+
+	zkConn.Set(nodeName, []byte(strings.Join(brokers, SPLITCHAT)), stat.Version)
 }

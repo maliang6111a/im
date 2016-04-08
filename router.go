@@ -8,26 +8,25 @@ import (
 )
 
 //成功连接的地址
-var servers map[string]*Client
-
-func init() {
-	servers = make(map[string]*Client, 0)
-}
+var servers map[string]*Client = make(map[string]*Client, 0)
 
 //连接其他机器
 func handlerBrokers(brokers []string) {
 
-	for _, broker := range brokers {
-		go clientServe(broker)
+	if len(brokers) > 0 {
+		for _, broker := range brokers {
+			if broker == thisBroker || broker == "" {
+				continue
+			} else {
+				log.Println("Trying to connect the others broker ", broker)
+				clientServe(broker)
+			}
+		}
 	}
 }
 
 func clientServe(server string) {
 	var t1 = time.NewTimer(HEATBEAT)
-	//本机不互联
-	if server == thisBroker {
-		return
-	}
 
 	//成功连接
 	if _, ok := servers[server]; ok {
@@ -37,13 +36,14 @@ func clientServe(server string) {
 	//log.Println(server)
 	tcpAddr, err := net.ResolveTCPAddr("tcp4", server)
 	if err != nil {
-		deleteBroker(nodeName, server)
+		log.Println(err, server)
+		deleteBroker(server)
 		return
 	}
 
 	conn, err := net.DialTCP("tcp", nil, tcpAddr)
 	if err != nil {
-		deleteBroker(nodeName, server)
+		deleteBroker(server)
 		return
 	}
 
@@ -64,56 +64,34 @@ func clientServe(server string) {
 				if err != nil {
 					log.Println("ping err so delete server  ", server)
 					delete(servers, server)
-					deleteBroker(nodeName, server)
+					deleteBroker(server)
 				} else {
-					//log.Printf("\n send ping %s ==> %s \n ", thisBroker, server)
 					t1.Reset(HEATBEAT)
 				}
 
 			}
 		}
 	}(client)
-
-	//不能走以前的流程，不好避免循环发送问题
-	//go client.Run()
-	go func() {
-		for !client.isClose {
-			msg := ReaderMessage(conn)
-			if msg != nil {
-				if conn, ok := client.conn.(net.Conn); ok {
-					conn.SetDeadline(RestTimeOut())
-					log.Println("接收到信息: ", msg, msg.body)
-					//HandlerBuffMessage(client, msg)
-					imsg := msg.body.(*IMMessage)
-					clients := FindClients(fmt.Sprintf("%d", imsg.Receiver))
-					//心跳发送 -1
-					if imsg.Sender <= -1 || imsg.Receiver <= -1 {
-						if conn, ok := client.conn.(net.Conn); ok {
-							conn.SetDeadline(RestTimeOut())
-						}
-					} else {
-						for _, client := range clients {
-							client.SendMessage(msg)
-						}
-					}
-				}
-			} else {
-				client.Stop()
-			}
-		}
-	}()
 	//目标对方的连接
 	servers[server] = client
-
+	log.Println(" connected  broker ", server)
 }
 
-/*
-	for key, v := range servers {
-			if key == thisBroker {
-				continue
+func RedirectServer(client *Client, msg *Message) {
+	if msg.version == BUFVERSION && client.key != thisBroker {
+		if imsg, ok := msg.body.(*IMMessage); ok {
+			if imsg.Sender <= -1 && imsg.Receiver <= -1 {
+				client.SetTimeOut()
 			} else {
-				log.Println("发送给服务器: ", v, msg)
-				v.SendMessage(msg)
+				go func() {
+					for k, v := range servers {
+						if k == thisBroker {
+							continue
+						}
+						v.SendMessage(msg)
+					}
+				}()
 			}
 		}
-*/
+	}
+}

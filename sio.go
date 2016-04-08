@@ -31,7 +31,8 @@ func (s *SIOServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 func StartSocketIO(socket_io_address string) {
 	server, err := engineio.NewServer(nil)
-	//server.SetPingInterval()
+	//server.SetPingInterval(time.Second * 20)
+	//server.SetPingTimeout(TIMEOUT)
 	if err != nil {
 		return
 	}

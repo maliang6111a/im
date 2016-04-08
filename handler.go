@@ -91,25 +91,21 @@ func HandlerTextMessage(client *Client, msg string) {
 func router(client *Client, msg *Message) {
 	imsg := msg.body.(*IMMessage)
 	clients := FindClients(fmt.Sprintf("%d", imsg.Receiver))
-
 	//心跳发送 -1
 	if imsg.Sender <= -1 || imsg.Receiver <= -1 {
 		if conn, ok := client.conn.(net.Conn); ok {
-			//log.Println("心跳设置....")
 			conn.SetDeadline(RestTimeOut())
 		}
 	} else {
 
+		go func() {
+			if !ISServe(client.key) {
+				RedirectServer(client, msg)
+			}
+		}()
+
 		for _, client := range clients {
 			client.SendMessage(msg)
-		}
-
-		//发送给其他服务器
-		for k, v := range servers {
-			if k == thisBroker {
-				continue
-			}
-			v.SendMessage(msg)
 		}
 
 	}
@@ -117,27 +113,22 @@ func router(client *Client, msg *Message) {
 
 //buff消息处理
 func HandlerBuffMessage(client *Client, msg *Message) {
-	//连接没有认证
-	if !client.IsAuthed() {
-		if amsg, ok := msg.body.(*AuthMessage); ok {
-			//认证
+	//认证信息处理
+	if !client.IsAuthed() || msg.version == BUFAUTH {
+		if authMessage, ok := msg.body.(*AuthMessage); ok {
 			var flag = true
-			if ISServe(amsg.authId) || ISServe(amsg.authPwd) {
+			if ISServe(authMessage.authId) {
 				flag = true
 			}
-			//if amsg.authId == TmpauthId && amsg.authPwd == TmpauthPwd {
-			//	flag = true
-			//}
+
 			if !flag {
 				client.Stop()
 			} else {
-				client.handlerAuth(amsg.authId)
+				client.handlerAuth(authMessage.authId)
+				//if !ISServe(authMessage.authId) {
 				PushClient(client)
+				//}
 			}
-		} else {
-			client.SendBuffMessage(createAuth())
-			//提示不断开
-			//client.Stop()
 		}
 	} else {
 		router(client, msg)
