@@ -48,7 +48,6 @@ func delClient(connId string, clients []*Client) bool {
 			if i <= 0 {
 				clients = make([]*Client, 0)
 			} else {
-				log.Println(len(clients), i, i+1, clients)
 				clients = append(clients[:i], clients[i+1:]...)
 			}
 
@@ -59,11 +58,13 @@ func delClient(connId string, clients []*Client) bool {
 	if len(clients) <= 0 {
 		delete(caches, key)
 	}
-	connections()
+	go connections()
 	return true
 }
 
 func FindClients(key string) []*Client {
+	lock.Lock()
+	defer lock.Unlock()
 	return exits(key)
 }
 
